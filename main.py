@@ -1,27 +1,7 @@
-
 import os
 from flask import Flask, request, jsonify
-import firebase_admin
-from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
-
-# Firebase initialization without file
-if not firebase_admin._apps:
-    try:
-        # Agar Render par environment variable set nahi hai toh bina DB ke chalega taaki crash na ho
-        cred_json = os.environ.get("FIREBASE_CREDENTIALS")
-        if cred_json:
-            import json
-            cred_dict = json.loads(cred_json)
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-        else:
-            firebase_admin.initialize_app()
-    except Exception as e:
-        print("Firebase init error:", e)
-
-db = firestore.client() if firebase_admin._apps else None
 
 @app.route("/", methods=["GET"])
 def home():
@@ -40,29 +20,14 @@ def verify_webhook():
 def handle_webhook():
     data = request.json
     try:
-        if "entry" in data:
-            for entry in data["entry"]:
-                for change in entry.get("changes", []):
-                    value = change.get("value", {})
-                    if "messages" in value:
-                        phone_number_id = value["metadata"]["phone_number_id"]
-                        message = value["messages"][0]
-                        from_number = message["from"]
-                        msg_body = message["text"]["body"]
-                        
-                        if db:
-                            db.collection("leads").add({
-                                "phone_number_id": phone_number_id,
-                                "from_number": from_number,
-                                "message": msg_body,
-                                "timestamp": firestore.SERVER_TIMESTAMP
-                            })
+        print("Received WhatsApp Data:", data)
         return jsonify({"status": "success"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
