@@ -1,4 +1,4 @@
+google-generativeai
 flask
-firebase-admin
-gunicorn
 requests
+firebase-admin
