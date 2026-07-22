@@ -1,3 +1,5 @@
+
+
 import os
 from flask import Flask, request, jsonify
 import firebase_admin
@@ -18,14 +20,17 @@ db = firestore.client() if firebase_admin._apps else None
 def home():
     return "WhatsApp Bot is Active and Running!", 200
 
+# Webhook verification for Meta WhatsApp Cloud API
 @app.route("/webhook", methods=["GET"])
 def verify_webhook():
     verify_token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
+    
     if verify_token == "12345":
         return challenge, 200
     return "Verification failed", 403
 
+# Incoming messages handler from WhatsApp
 @app.route("/webhook", methods=["POST"])
 def handle_webhook():
     data = request.json
@@ -53,7 +58,6 @@ def handle_webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
 
 
 
