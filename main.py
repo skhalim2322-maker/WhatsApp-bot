@@ -1,5 +1,4 @@
 
-
 import os
 from flask import Flask, request, jsonify
 import firebase_admin
@@ -7,12 +6,20 @@ from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
-# Firebase initialization
+# Firebase initialization without file
 if not firebase_admin._apps:
     try:
-        firebase_admin.initialize_app()
-    except Exception:
-        pass
+        # Agar Render par environment variable set nahi hai toh bina DB ke chalega taaki crash na ho
+        cred_json = os.environ.get("FIREBASE_CREDENTIALS")
+        if cred_json:
+            import json
+            cred_dict = json.loads(cred_json)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
+    except Exception as e:
+        print("Firebase init error:", e)
 
 db = firestore.client() if firebase_admin._apps else None
 
@@ -20,7 +27,6 @@ db = firestore.client() if firebase_admin._apps else None
 def home():
     return "WhatsApp Bot is Active and Running!", 200
 
-# Webhook verification for Meta WhatsApp Cloud API
 @app.route("/webhook", methods=["GET"])
 def verify_webhook():
     verify_token = request.args.get("hub.verify_token")
@@ -30,7 +36,6 @@ def verify_webhook():
         return challenge, 200
     return "Verification failed", 403
 
-# Incoming messages handler from WhatsApp
 @app.route("/webhook", methods=["POST"])
 def handle_webhook():
     data = request.json
