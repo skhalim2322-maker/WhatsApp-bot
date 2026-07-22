@@ -5,10 +5,9 @@ from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
-# Firebase initialization
+# Firebase initialization (Modified for cloud deployment)
 if not firebase_admin._apps:
-    cred = credentials.ApplicationDefault()
-    firebase_admin.initialize_app(cred)
+    firebase_admin.initialize_app()
 
 db = firestore.client()
 
@@ -36,13 +35,13 @@ def handle_webhook():
         if "entry" in data:
             for entry in data["entry"]:
                 for change in entry.get("changes", []):
-                    value = change.get("value", {})
+                    value = change.get("value", ())
                     if "messages" in value:
                         phone_number_id = value["metadata"]["phone_number_id"]
                         message = value["messages"][0]
                         from_number = message["from"]
                         msg_body = message["text"]["body"]
-                        
+
                         # Store lead securely in Firestore under specific broker/phone mapping
                         db.collection("leads").add({
                             "phone_number_id": phone_number_id,
@@ -50,10 +49,12 @@ def handle_webhook():
                             "message": msg_body,
                             "timestamp": firestore.SERVER_TIMESTAMP
                         })
+        
         return jsonify({"status": "success"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
