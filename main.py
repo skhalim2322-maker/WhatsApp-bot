@@ -22,7 +22,8 @@ def verify_webhook():
     challenge = request.args.get("hub.challenge")
     
     # Aap apna custom verify token yahan set kar sakte hain
-    if verify_token == "nexus_ops_secure_token":
+    if verify_token == "12345":
+
         return challenge, 200
     return "Verification failed", 403
 
