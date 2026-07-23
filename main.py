@@ -5,7 +5,7 @@ from google import genai
 
 app = Flask(__name__)
 
-# Gemini API configuration (Naye google-genai SDK ke sath)
+# Gemini API configuration
 API_KEY = os.environ.get("GEMINI_API_KEY")
 client = None
 if API_KEY:
@@ -38,52 +38,54 @@ def webhook():
         print("Incoming data:", data)
         
         try:
-            entry = data['entry'][0]
-            changes = entry['changes'][0]
-            value = changes['value']
-            
-            if 'messages' in value:
-                message = value['messages'][0]
-                from_number = message['from']
-                
-                msg_body = ""
-                if 'text' in message:
-                    msg_body = message['text']['body']
-                elif 'audio' in message:
-                    msg_body = "User ne voice message bheja hai."
-                
-                if msg_body:
-                    print(f"Message received from {from_number}: {msg_body}")
+            for entry in data.get('entry', []):
+                for change in entry.get('changes', []):
+                    value = change.get('value', {})
                     
-                    # Gemini AI response generation with updated model name
-                    reply_text = "Maaf kijiye, abhi main response generate nahi kar pa raha hoon."
-                    if client:
-                        try:
-                            # Model name ko gemini-2.0-flash kiya gaya hai
-                            response = client.models.generate_content(
-                                model='gemini-2.0-flash',
-                                contents=msg_body
-                            )
-                            if response and response.text:
-                                reply_text = response.text
-                            print(f"Gemini Response Generated: {reply_text}")
-                        except Exception as ai_err:
-                            print("Gemini API Error:", ai_err)
-                    
-                    # Send back to WhatsApp
-                    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-                    headers = {
-                        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
-                        "Content-Type": "application/json"
-                    }
-                    payload = {
-                        "messaging_product": "whatsapp",
-                        "to": from_number,
-                        "text": {"body": reply_text}
-                    }
-                    
-                    wa_response = requests.post(url, json=payload, headers=headers)
-                    print("WhatsApp Send Response:", wa_response.status_code, wa_response.text)
+                    # Check if messages exist in payload
+                    if 'messages' in value:
+                        messages = value['messages']
+                        if messages and len(messages) > 0:
+                            message = messages[0]
+                            from_number = message.get('from')
+                            
+                            msg_body = ""
+                            if 'text' in message:
+                                msg_body = message['text'].get('body', '')
+                            elif 'audio' in message:
+                                msg_body = "User sent an audio message."
+                            
+                            if msg_body and from_number:
+                                print(f"Message received from {from_number}: {msg_body}")
+                                
+                                # Gemini AI response generation
+                                reply_text = "Sorry, I am unable to generate a response right now."
+                                if client:
+                                    try:
+                                        response = client.models.generate_content(
+                                            model='gemini-2.0-flash',
+                                            contents=msg_body
+                                        )
+                                        if response and response.text:
+                                            reply_text = response.text
+                                        print(f"Gemini Response Generated: {reply_text}")
+                                    except Exception as ai_err:
+                                        print("Gemini API Error:", ai_err)
+                                
+                                # Send back to WhatsApp using v21.0
+                                url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+                                headers = {
+                                    "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                                    "Content-Type": "application/json"
+                                }
+                                payload = {
+                                    "messaging_product": "whatsapp",
+                                    "to": from_number,
+                                    "text": {"body": reply_text}
+                                }
+                                
+                                wa_response = requests.post(url, json=payload, headers=headers)
+                                print("WhatsApp Send Response:", wa_response.status_code, wa_response.text)
                 
         except Exception as e:
             print("Error processing message:", e)
