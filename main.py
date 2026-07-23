@@ -10,7 +10,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 if API_KEY:
     genai.configure(api_key=API_KEY)
     # Using the standard working model name
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
 
 else:
     print("WARNING: GEMINI_API_KEY is not set!")
