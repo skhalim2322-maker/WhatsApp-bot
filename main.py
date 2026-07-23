@@ -6,8 +6,13 @@ import google.generativeai as genai
 app = Flask(__name__)
 
 # Gemini API configuration
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.5-flash')
+API_KEY = os.environ.get("GEMINI_API_KEY")
+if API_KEY:
+    genai.configure(api_key=API_KEY)
+    # Using the standard working model name
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    print("WARNING: GEMINI_API_KEY is not set!")
 
 WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
@@ -43,14 +48,19 @@ def webhook():
                 if 'text' in message:
                     msg_body = message['text']['body']
                 elif 'audio' in message:
-                    msg_body = "User ne voice message bheja hai. (Abhi text mein jawab de raha hoon)."
+                    msg_body = "User ne voice message bheja hai."
                 
                 if msg_body:
                     print(f"Message received from {from_number}: {msg_body}")
                     
-                    # Gemini AI response
-                    response = model.generate_content(msg_body)
-                    reply_text = response.text
+                    # Gemini AI response generation with error catching
+                    try:
+                        response = model.generate_content(msg_body)
+                        reply_text = response.text
+                        print(f"Gemini Response Generated: {reply_text}")
+                    except Exception as ai_err:
+                        print("Gemini API Error:", ai_err)
+                        reply_text = "Maaf kijiye, abhi main response generate nahi kar pa raha hoon."
                     
                     # Send back to WhatsApp
                     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
@@ -63,7 +73,9 @@ def webhook():
                         "to": from_number,
                         "text": {"body": reply_text}
                     }
-                    requests.post(url, json=payload, headers=headers)
+                    
+                    wa_response = requests.post(url, json=payload, headers=headers)
+                    print("WhatsApp Send Response:", wa_response.status_code, wa_response.text)
                 
         except Exception as e:
             print("Error processing message:", e)
@@ -72,4 +84,3 @@ def webhook():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
-
