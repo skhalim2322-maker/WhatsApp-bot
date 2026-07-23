@@ -1,15 +1,18 @@
 from flask import Flask, request
 import os
 import requests
-import google.generativeai as genai
+from google import genai
 
 app = Flask(__name__)
 
-# Gemini API configuration
+# Gemini API configuration (Naye google-genai SDK ke sath)
 API_KEY = os.environ.get("GEMINI_API_KEY")
+client = None
 if API_KEY:
-    genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    try:
+        client = genai.Client(api_key=API_KEY)
+    except Exception as e:
+        print("Gemini Client Init Error:", e)
 else:
     print("WARNING: GEMINI_API_KEY is not set!")
 
@@ -52,14 +55,20 @@ def webhook():
                 if msg_body:
                     print(f"Message received from {from_number}: {msg_body}")
                     
-                    # Gemini AI response generation with error catching
-                    try:
-                        response = model.generate_content(msg_body)
-                        reply_text = response.text
-                        print(f"Gemini Response Generated: {reply_text}")
-                    except Exception as ai_err:
-                        print("Gemini API Error:", ai_err)
-                        reply_text = "Maaf kijiye, abhi main response generate nahi kar pa raha hoon."
+                    # Gemini AI response generation with updated model name
+                    reply_text = "Maaf kijiye, abhi main response generate nahi kar pa raha hoon."
+                    if client:
+                        try:
+                            # Model name ko gemini-2.0-flash kiya gaya hai
+                            response = client.models.generate_content(
+                                model='gemini-2.0-flash',
+                                contents=msg_body
+                            )
+                            if response and response.text:
+                                reply_text = response.text
+                            print(f"Gemini Response Generated: {reply_text}")
+                        except Exception as ai_err:
+                            print("Gemini API Error:", ai_err)
                     
                     # Send back to WhatsApp
                     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
