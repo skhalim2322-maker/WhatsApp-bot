@@ -2,3 +2,7 @@ flask
 requests
 google-genai
 google-auth
+firebase-admin
+gunicorn
+google-api-python-client
+python-dateutil
