@@ -99,7 +99,7 @@ def chat_api():
     """Manual AI tester in the dashboard — NOT the WhatsApp path."""
     data = request.json or {}
     msg_body = data.get('message', '')
-    reply_text = gemini_utils.get_ai_reply(msg_body)
+    reply_text = gemini_utils.get_real_estate_reply(msg_body)
     return jsonify({"reply": reply_text})
 
 
