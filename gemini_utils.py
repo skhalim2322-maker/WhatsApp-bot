@@ -21,7 +21,7 @@ import re
 from google import genai
 
 API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
 _client = None
 if API_KEY:
