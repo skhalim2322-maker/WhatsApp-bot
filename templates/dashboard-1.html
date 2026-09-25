@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Ops - Command Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #f4f6f9; color: #333; display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background-color: #0f172a; color: #94a3b8; display: flex; flex-direction: column; border-right: 1px solid #1e293b; }
+        .sidebar-brand { padding: 20px; font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #1e293b; }
+        .sidebar-brand i { color: #3b82f6; }
+        .sidebar-menu { list-style: none; padding: 20px 10px; flex: 1; }
+        .sidebar-menu li { padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; transition: all 0.3s; }
+        .sidebar-menu li:hover, .sidebar-menu li.active { background-color: #1e293b; color: #fff; }
+        .sidebar-menu li.active { background-color: #2563eb; color: #fff; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+
+        .header { background: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
+        .header-title { font-size: 18px; font-weight: 600; color: #1e293b; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .conn-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+        .conn-badge.ok { background: #dcfce7; color: #15803d; }
+        .conn-badge.bad { background: #fee2e2; color: #b91c1c; }
+
+        .dashboard-body { padding: 30px; display: flex; flex-direction: column; gap: 25px; }
+
+        .status-row { display: flex; gap: 15px; }
+        .status-pill { background: #fff; padding: 10px 20px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+        .status-pill .dot.off { background: #cbd5e1; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+
+        .card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+
+        .kpi-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+        .kpi-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .kpi-card.blue { background: #2563eb; color: #fff; border: none; }
+        .kpi-card.blue .kpi-label { color: #dbeafe; }
+        .kpi-label { font-size: 13px; color: #64748b; font-weight: 500; }
+        .kpi-value { font-size: 26px; font-weight: 700; margin: 8px 0; color: #0f172a; }
+        .kpi-card.blue .kpi-value { color: #fff; }
+
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .list-item:last-child { border-bottom: none; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge.active { background: #dbeafe; color: #1d4ed8; }
+        .badge.completed { background: #dcfce7; color: #15803d; }
+        .badge.failed { background: #fee2e2; color: #b91c1c; }
+        .empty-note { font-size: 12px; color: #94a3b8; padding: 10px 0; }
+
+        .chat-section { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-history { height: 180px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; overflow-y: auto; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-msg { padding: 8px 12px; border-radius: 6px; max-width: 80%; }
+        .chat-msg.user { background: #dbeafe; align-self: flex-end; color: #1e40af; }
+        .chat-msg.ai { background: #fff; border: 1px solid #e2e8f0; align-self: flex-start; color: #334155; }
+        .chat-input-row { display: flex; gap: 8px; }
+        .chat-input-row input { flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; outline: none; font-size: 13px; }
+        .chat-input-row button { background: #2563eb; color: #fff; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand"><i class="fa-solid fa-cube"></i> NEXUS OPS</div>
+        <ul class="sidebar-menu">
+            <li class="active"><i class="fa-solid fa-chart-pie"></i> Dashboard</li>
+            <li><i class="fa-solid fa-users-gear"></i> Lead Management</li>
+            <li><i class="fa-solid fa-wand-magic-sparkles"></i> Automation</li>
+            <li><i class="fa-solid fa-phone-volume"></i> Call Logs</li>
+            <li><i class="fa-solid fa-address-book"></i> Contacts</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="header-title">Nexus Ops Dashboard</div>
+            <div class="header-right">
+                <span id="connBadge" class="conn-badge bad">Checking Firebase...</span>
+            </div>
+        </div>
+
+        <div class="dashboard-body">
+            <div class="status-row">
+                <div class="status-pill"><span class="dot"></span> WhatsApp API: Configured server-side</div>
+                <div class="status-pill"><span class="dot" id="geminiDot"></span> Gemini AI: <span id="geminiStatus">Checking...</span></div>
+            </div>
+
+            <div class="kpi-container">
+                <div class="kpi-card blue">
+                    <div class="kpi-label">Total Leads</div>
+                    <div class="kpi-value" id="kpiTotalLeads">–</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Completed Cycles</div>
+                    <div class="kpi-value" id="kpiCompleted">–</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Failed Handshakes</div>
+                    <div class="kpi-value" id="kpiFailed">–</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="card">
+                        <div class="card-title"><span>Active Leads (live from Firestore)</span></div>
+                        <div id="leadsList"><div class="empty-note">Loading...</div></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><span>🤖 Gemini AI Command Center</span></div>
+                        <div class="chat-section">
+                            <div class="chat-history" id="chatBox">
+                                <div class="chat-msg ai">Nexus AI operational. Type a prompt to test system response.</div>
+                            </div>
+                            <div class="chat-input-row">
+                                <input type="text" id="userInput" placeholder="Type a message or prompt..." onkeypress="handleKey(event)">
+                                <button onclick="sendAIQuery()">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="card">
+                        <div class="card-title">System Call Logs</div>
+                        <div id="callLogsList"><div class="empty-note">Loading...</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadDashboardData() {
+            try {
+                const res = await fetch('/api/dashboard-data');
+                const data = await res.json();
+
+                document.getElementById('kpiTotalLeads').innerText = data.stats.total_leads;
+                document.getElementById('kpiCompleted').innerText = data.stats.completed_cycles;
+                document.getElementById('kpiFailed').innerText = data.stats.failed_handshakes;
+
+                const connBadge = document.getElementById('connBadge');
+                if (data.stats.firebase_connected) {
+                    connBadge.textContent = 'Firebase Connected';
+                    connBadge.className = 'conn-badge ok';
+                } else {
+                    connBadge.textContent = 'Firebase Not Configured';
+                    connBadge.className = 'conn-badge bad';
+                }
+
+                const geminiDot = document.getElementById('geminiDot');
+                const geminiStatus = document.getElementById('geminiStatus');
+                if (data.gemini_configured) {
+                    geminiDot.classList.remove('off');
+                    geminiStatus.innerText = 'Active';
+                } else {
+                    geminiDot.classList.add('off');
+                    geminiStatus.innerText = 'Not Configured';
+                }
+
+                const leadsList = document.getElementById('leadsList');
+                leadsList.innerHTML = '';
+                if (!data.leads || data.leads.length === 0) {
+                    leadsList.innerHTML = '<div class="empty-note">No leads yet — leads appear here as people message your WhatsApp number.</div>';
+                } else {
+                    data.leads.forEach(lead => {
+                        const status = (lead.status || 'active');
+                        leadsList.innerHTML += `
+                            <div class="list-item">
+                                <div>
+                                    <strong>${lead.name || lead.wa_id}</strong>
+                                    <div style="font-size: 11px; color: #64748b;">${((lead.last_message_en || lead.last_message) || '').slice(0, 60)}</div>
+                                </div>
+                                <span class="badge ${status}">${status}</span>
+                            </div>`;
+                    });
+                }
+
+                const callLogsList = document.getElementById('callLogsList');
+                callLogsList.innerHTML = '';
+                if (!data.call_logs || data.call_logs.length === 0) {
+                    callLogsList.innerHTML = '<div class="empty-note">No call logs yet. Connect a voice-automation provider to populate this.</div>';
+                } else {
+                    data.call_logs.forEach(log => {
+                        callLogsList.innerHTML += `
+                            <div class="list-item" style="font-size: 12px;">
+                                <div>
+                                    <strong>${log.direction === 'incoming' ? 'Incoming from' : 'Outgoing to'} ${log.phone}</strong>
+                                    <div style="color: #64748b;">Status: ${log.status}</div>
+                                </div>
+                            </div>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Dashboard load error', err);
+            }
+        }
+
+        async function sendAIQuery() {
+            const input = document.getElementById('userInput');
+            const chatBox = document.getElementById('chatBox');
+            const text = input.value.trim();
+            if (!text) return;
+
+            chatBox.innerHTML += `<div class="chat-msg user">${text}</div>`;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const loadId = 'load_' + Date.now();
+            chatBox.innerHTML += `<div class="chat-msg ai" id="${loadId}">Processing...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/chat-api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await response.json();
+                document.getElementById(loadId).innerText = data.reply;
+            } catch (err) {
+                document.getElementById(loadId).innerText = "Error connecting to AI backend.";
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter') sendAIQuery();
+        }
+
+        loadDashboardData();
+        setInterval(loadDashboardData, 15000); // refresh every 15s
+    </script>
+</body>
+</html>
