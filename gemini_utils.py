@@ -50,6 +50,124 @@ REAL_ESTATE_PERSONA = (
 )
 
 
+import re
+
+# Unicode script ranges for major Indian languages + Arabic/Urdu.
+# Script-based detection is very reliable (no ambiguity like Latin script has).
+SCRIPT_RANGES = [
+    (r"[\u0980-\u09FF]", "Bengali"),
+    (r"[\u0A00-\u0A7F]", "Punjabi"),
+    (r"[\u0A80-\u0AFF]", "Gujarati"),
+    (r"[\u0B00-\u0B7F]", "Odia"),
+    (r"[\u0B80-\u0BFF]", "Tamil"),
+    (r"[\u0C00-\u0C7F]", "Telugu"),
+    (r"[\u0C80-\u0CFF]", "Kannada"),
+    (r"[\u0D00-\u0D7F]", "Malayalam"),
+    (r"[\u0600-\u06FF\u0750-\u077F]", "Arabic"),  # also covers Urdu script
+    (r"[\u0900-\u097F]", "Hindi"),  # Devanagari — checked last among scripts (Marathi also uses this)
+]
+
+
+def detect_language(text: str) -> str:
+    """
+    Reliable language detection — doesn't rely on the AI model for native scripts.
+    Returns a language name: 'Hindi', 'Hinglish', 'English', 'Bengali', 'Tamil',
+    'Telugu', 'Kannada', 'Malayalam', 'Gujarati', 'Punjabi', 'Odia', 'Arabic', etc.
+    For Latin-script text that isn't clearly English or Hinglish, returns None so
+    the caller can fall back to asking the AI model to identify it (covers Marathi,
+    Tamil, etc. typed in Roman script, which script-detection can't catch).
+    """
+    if not text:
+        return "English"
+
+    for pattern, lang_name in SCRIPT_RANGES:
+        if re.search(pattern, text):
+            return lang_name
+
+    # Common Hinglish (Roman-script Hindi) words/markers
+    hinglish_markers = [
+        "hai", "hain", "kya", "kaise", "chahiye", "nahi", "nahin", "bhi",
+        "mujhe", "aap", "aapka", "kar", "karo", "karna", "mein", "mai",
+        "hoon", "ho", "ka", "ki", "ke", "se", "ye", "yeh", "woh", "wo",
+        "abhi", "matlab", "theek", "thik", "haan", "nahi", "budget",
+        "chahta", "chahti",
+    ]
+    words = re.findall(r"[a-zA-Z']+", text.lower())
+    hinglish_hits = sum(1 for w in words if w in hinglish_markers)
+
+    if words and hinglish_hits / len(words) >= 0.15:
+        return "Hinglish"
+
+    return None  # ambiguous Latin-script text — caller should ask the AI model
+
+
+def identify_language_ai(text: str) -> str:
+    """
+    Fallback for Latin-script messages that script-detection and the Hinglish
+    heuristic couldn't confidently classify (e.g. Marathi, Tamil, or Bengali
+    typed in Roman letters instead of native script). Uses the AI model itself,
+    which is very good at this. Falls back to 'English' if anything goes wrong.
+    """
+    if not _client or not text:
+        return "English"
+    try:
+        prompt = (
+            "What language is the following WhatsApp message written in? "
+            "Reply with ONLY the language name in English (e.g. 'English', "
+            "'Marathi', 'Tamil', 'Bengali'), nothing else.\n\n"
+            f"Message: \"{text}\""
+        )
+        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        result = (response.text or "").strip().split("\n")[0].strip(" .\"'")
+        return result or "English"
+    except Exception as e:
+        print("[gemini_utils] Language identification error:", e)
+        return "English"
+
+
+def get_language_for_reply(text: str) -> str:
+    """
+    Best-effort language instruction to use for a reply — script check first,
+    then AI fallback. Hindi is deliberately returned as Romanized Hindi
+    (Hinglish, English/Roman letters) instead of Devanagari script — many
+    readers can sound out Roman letters but not read Devanagari fluently.
+    """
+    lang = detect_language(text)
+    if lang is None:
+        lang = identify_language_ai(text)
+    if lang == "Hindi":
+        return "Hindi, but written using English/Roman alphabet letters (Romanized Hindi / Hinglish) — NOT Devanagari script"
+    return lang
+
+
+def translate_to_english(text: str) -> str:
+    """
+    Translates any-language customer message into Romanized Hindi (Hindi
+    meaning, written using English/Roman letters, NOT Devanagari) — used so
+    the business owner can read every conversation in the dashboard in a
+    script they're comfortable with, regardless of what language/script the
+    customer actually wrote in. Returns the original text unchanged if
+    translation isn't available.
+    """
+    if not _client or not text:
+        return text
+    try:
+        prompt = (
+            "Translate the following message into Hindi, but write the Hindi "
+            "using English/Roman alphabet letters (Romanized Hindi / Hinglish), "
+            "NOT Devanagari script. If the message is already Romanized Hindi "
+            "or English, you may return it unchanged if that's clearer. Reply "
+            "with ONLY the translation, nothing else — no notes, no language name.\n\n"
+            f"Message: \"{text}\""
+        )
+        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        result = (response.text or "").strip()
+        return result or text
+    except Exception as e:
+        print("[gemini_utils] Translation error:", e)
+        return text
+
+
 def _build_reply_prompt(user_message: str, history: list, lead_state: dict) -> str:
     known = []
     missing = []
@@ -76,6 +194,12 @@ def _build_reply_prompt(user_message: str, history: list, lead_state: dict) -> s
         lines.append("")
 
     lines.append(f"Lead: {user_message}")
+    detected_lang = get_language_for_reply(user_message)
+    lines.append(
+        f"[SYSTEM: The lead's message above is in {detected_lang}. "
+        f"You MUST write your reply ONLY in {detected_lang}, regardless of what "
+        f"language earlier turns used. Do not mix in Hindi if this is English.]"
+    )
     lines.append("Assistant:")
     return "\n".join(lines)
 
