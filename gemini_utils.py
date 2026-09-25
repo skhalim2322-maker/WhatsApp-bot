@@ -117,12 +117,26 @@ def identify_language_ai(text: str) -> str:
             "'Marathi', 'Tamil', 'Bengali'), nothing else.\n\n"
             f"Message: \"{text}\""
         )
-        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
-        result = (response.text or "").strip().split("\n")[0].strip(" .\"'")
-        return result or "English"
-    except Exception as e:
-        print("[gemini_utils] Language identification error:", e)
-        return "English"
+        response = import time
+
+def _generate_with_retry(prompt, max_retries=3, base_delay=2):
+    """
+    Calls Gemini and retries on 503 (server overloaded) errors with
+    exponential backoff (2s, 4s, 8s...). Returns the response object,
+    or raises the last exception if all retries fail.
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    continue
+            raise
+    raise last_error
 
 
 def get_language_for_reply(text: str) -> str:
@@ -211,13 +225,26 @@ def get_real_estate_reply(user_message: str, history: list = None, lead_state: d
     prompt = _build_reply_prompt(user_message, history or [], lead_state or {})
 
     try:
-        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
-        if response and response.text:
-            return response.text.strip()
-        return "माफ़ कीजिए, अभी जवाब नहीं बन पाया। कृपया दोबारा भेजें।"
-    except Exception as e:
-        print("[gemini_utils] Generation error:", e)
-        return "कुछ तकनीकी दिक्कत आई है, कृपया थोड़ी देर में फिर से कोशिश करें।"
+        response =import time
+
+def _generate_with_retry(prompt, max_retries=3, base_delay=2):
+    """
+    Calls Gemini and retries on 503 (server overloaded) errors with
+    exponential backoff (2s, 4s, 8s...). Returns the response object,
+    or raises the last exception if all retries fail.
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    continue
+            raise
+    raise last_error
 
 
 EXTRACTION_PROMPT_TEMPLATE = """Extract real-estate lead qualification details from this WhatsApp message.
@@ -251,15 +278,26 @@ def extract_qualification(user_message: str) -> dict:
     prompt = EXTRACTION_PROMPT_TEMPLATE.format(message=user_message.replace('"', "'"))
 
     try:
-        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
-        text = (response.text or "").strip()
-        text = re.sub(r"^```(json)?|```$", "", text, flags=re.MULTILINE).strip()
-        parsed = json.loads(text)
-        default.update({k: v for k, v in parsed.items() if k in default})
-        return default
-    except Exception as e:
-        print("[gemini_utils] Extraction error:", e)
-        return default
+        response = import time
+
+def _generate_with_retry(prompt, max_retries=3, base_delay=2):
+    """
+    Calls Gemini and retries on 503 (server overloaded) errors with
+    exponential backoff (2s, 4s, 8s...). Returns the response object,
+    or raises the last exception if all retries fail.
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    continue
+            raise
+    raise last_error
 
 
 DATETIME_PROMPT_TEMPLATE = """The current date/time is {now}, timezone Asia/Kolkata.
@@ -279,11 +317,23 @@ def parse_visit_datetime(text: str, now_iso: str) -> str:
         return None
     prompt = DATETIME_PROMPT_TEMPLATE.format(now=now_iso, text=text.replace('"', "'"))
     try:
-        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
-        result = (response.text or "").strip().strip('"')
-        if result.lower() == "null" or not result:
-            return None
-        return result
-    except Exception as e:
-        print("[gemini_utils] Datetime parse error:", e)
-        return None
+        response = import time
+
+def _generate_with_retry(prompt, max_retries=3, base_delay=2):
+    """
+    Calls Gemini and retries on 503 (server overloaded) errors with
+    exponential backoff (2s, 4s, 8s...). Returns the response object,
+    or raises the last exception if all retries fail.
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    continue
+            raise
+    raise last_error
