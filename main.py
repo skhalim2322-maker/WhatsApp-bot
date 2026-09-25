@@ -1,7 +1,7 @@
 """
 main.py
 --------
-Nexus Ops WhatsApp AI Agent — main Flask application.
+Dubai link Realty WhatsApp AI Agent — main Flask application.
 
 Flow for a real WhatsApp conversation:
     1. User sends a WhatsApp message -> Meta POSTs it to /webhook
@@ -158,8 +158,9 @@ def handle_incoming_message(msg: dict):
 
     # 1. Load existing lead state + save/update the lead record
     lead_state = firebase_utils.get_lead(wa_id) or {}
-    firebase_utils.upsert_lead(wa_id, name=name, last_message=text, status="qualifying")
-    firebase_utils.log_message(wa_id, role="user", text=text)
+    text_en = gemini_utils.translate_to_english(text)
+    firebase_utils.upsert_lead(wa_id, name=name, last_message=text, last_message_en=text_en, status="qualifying")
+    firebase_utils.log_message(wa_id, role="user", text=text, text_en=text_en)
 
     # 2. Silently extract any qualification details mentioned in this message
     extracted = gemini_utils.extract_qualification(text)
@@ -289,4 +290,3 @@ if __name__ == '__main__':
 
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
