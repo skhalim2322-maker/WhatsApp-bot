@@ -76,8 +76,12 @@ def _now():
 # Leads
 # ---------------------------------------------------------------------------
 
-def upsert_lead(wa_id: str, name: str = None, last_message: str = None, status: str = "active"):
-    """Create or update a lead record for a WhatsApp contact."""
+def upsert_lead(wa_id: str, name: str = None, last_message: str = None,
+                 last_message_en: str = None, status: str = "active"):
+    """Create or update a lead record for a WhatsApp contact.
+    last_message_en is an English translation of last_message, so the business
+    owner can read the dashboard in English regardless of what language the
+    customer actually wrote in."""
     db = init_firebase()
     if not db:
         return
@@ -89,6 +93,8 @@ def upsert_lead(wa_id: str, name: str = None, last_message: str = None, status: 
         "status": status,
         "updated_at": _now(),
     }
+    if last_message_en:
+        data["last_message_en"] = last_message_en
     if name:
         data["name"] = name
     if not doc.exists:
@@ -149,16 +155,21 @@ def count_leads():
 # Conversation history (per WhatsApp user) — used for Gemini context
 # ---------------------------------------------------------------------------
 
-def log_message(wa_id: str, role: str, text: str):
-    """role is 'user' or 'ai'."""
+def log_message(wa_id: str, role: str, text: str, text_en: str = None):
+    """role is 'user' or 'ai'. text_en is an optional English translation, stored
+    so the dashboard can show every conversation in English regardless of the
+    customer's actual language."""
     db = init_firebase()
     if not db:
         return
-    db.collection("conversations").document(wa_id).collection("messages").add({
+    data = {
         "role": role,
         "text": text,
         "timestamp": _now(),
-    })
+    }
+    if text_en:
+        data["text_en"] = text_en
+    db.collection("conversations").document(wa_id).collection("messages").add(data)
 
 
 def get_recent_history(wa_id: str, limit: int = 10):
@@ -230,4 +241,3 @@ def get_dashboard_stats():
         "failed_handshakes": failed,
         "firebase_connected": True,
     }
-
