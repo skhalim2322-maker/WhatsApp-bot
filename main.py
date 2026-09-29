@@ -173,6 +173,14 @@ def handle_incoming_message(msg: dict):
         "prop_type": extracted.get("prop_type"),
         "timeline": extracted.get("timeline"),
     })
+
+    # 2b. Silently score how "hot"/interested this lead sounds right now
+    sentiment = sentiment_utils.analyze_sentiment(text, history=firebase_utils.get_recent_history(wa_id, limit=6))
+    firebase_utils.update_qualification_fields(wa_id, {
+        "interest_level": sentiment.get("interest_level"),
+        "interest_reason": sentiment.get("reason"),
+    })
+
     lead_state = firebase_utils.get_lead(wa_id) or {}
 
     # 3. If they asked for a site visit and gave a time, try to book it
